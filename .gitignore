@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+data/
+coverage/
+web/node_modules/
+web/dist/
+*.log

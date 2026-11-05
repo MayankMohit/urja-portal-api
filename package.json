@@ -1,0 +1,37 @@
+{
+  "name": "urja-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/src/server.js",
+    "crawl": "tsx scripts/crawl.ts",
+    "audit": "tsx scripts/audit.ts",
+    "openapi": "tsx scripts/export-openapi.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@fastify/static": "^10.1.10",
+    "@fastify/swagger": "^9.9.3",
+    "@fastify/type-provider-typebox": "^6.3.0",
+    "@scalar/fastify-api-reference": "^1.76.4",
+    "@sinclair/typebox": "^0.34.52",
+    "dotenv": "^18.0.9",
+    "fastify": "^5.12.8",
+    "p-limit": "^7.3.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "pino-pretty": "^13.2.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
