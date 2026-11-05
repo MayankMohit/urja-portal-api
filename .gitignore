@@ -6,3 +6,5 @@ coverage/
 web/node_modules/
 web/dist/
 *.log
+*.local.md
+CLAUDE.md
