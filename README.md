@@ -57,9 +57,9 @@ src/
   routes/   API endpoints, read snapshot only
   schemas/  TypeBox request/response schemas
   lib/      small shared helpers
-scripts/    crawl, audit, export-openapi
+scripts/    crawl, export-openapi
 test/       unit tests + fixtures (never hit the live portal)
-docs/        investigation log, audit report
+docs/        investigation log
 ```
 
 ## 6. Configuration
@@ -122,7 +122,7 @@ _TODO._
 
 ## 18. AI assistance
 
-AI Assistant (Claude Code) was used as a tool to work through the problem, draft the documentation, and assist in writing code to my direction. The investigation of the portal was mine; see [docs/investigation-log.md](./docs/investigation-log.md).
+AI Assistant (Claude Code) was used as a tool to work through the problem, draft the documentation, and assist in writing and reviewing code to my direction. The investigation of the portal was mine; see [docs/investigation-log.md](./docs/investigation-log.md).
 
 ## 19. Links
 

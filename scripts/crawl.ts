@@ -7,19 +7,6 @@ import { RecordingLogger } from '../src/lib/recording-logger.js';
 import { fetchEnergy } from '../src/sync/fetch.js';
 import type { RawDt, RawEnergy, RawExport } from '../src/portal/types.js';
 
-// Writes the raw, untouched portal responses to data/raw/ for the offline audit
-// and for building test fixtures. data/ is gitignored.
-//
-// Resumable by default: an existing export.json/dts.json is reused, and only
-// meters whose energy file is missing are fetched. Each energy file is written
-// the instant it arrives, so an interrupted run loses nothing and a re-run
-// continues where it stopped. This is a rate-limit recovery convenience, NOT the
-// freshness mechanism: the background sync (src/sync) decides staleness by
-// refetching and comparing content hashes. For a clean full pull that ignores
-// whatever is on disk, run `npm run crawl -- --fresh`.
-//
-// The /portal/keys response (the signing secret) is never written.
-
 // `npm run crawl -- --fresh` refetches everything, ignoring cached files on disk.
 const FRESH = process.argv.includes('--fresh');
 

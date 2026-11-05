@@ -9,7 +9,6 @@
     "build": "tsc",
     "start": "node dist/src/server.js",
     "crawl": "tsx scripts/crawl.ts",
-    "audit": "tsx scripts/audit.ts",
     "openapi": "tsx scripts/export-openapi.ts",
     "typecheck": "tsc --noEmit"
   },

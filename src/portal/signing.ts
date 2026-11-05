@@ -7,7 +7,6 @@ import { createHmac } from 'node:crypto';
  *   method, path, query, timestamp
  * for example: "GET\n/portal/export\npage=1\n1762318800".
  *
- * Notes that are easy to get wrong:
  * - `query` has NO leading "?" (e.g. "page=1", not "?page=1").
  * - `timestamp` is Unix SECONDS as a string, not milliseconds.
  * - the result is lowercase hex (Node's digest('hex') is already lowercase).
