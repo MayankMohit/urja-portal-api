@@ -15,7 +15,9 @@ export type IssueCode =
   | 'meter_unknown_enum'
   | 'hierarchy_value_repaired'
   | 'hierarchy_value_missing'
-  | 'dt_name_mismatch';
+  | 'dt_name_mismatch'
+  | 'readings_stale'
+  | 'readings_unavailable';
 
 export type IssueSeverity = 'info' | 'warning' | 'error';
 export type IssueEntityType = 'meter' | 'transformer' | 'reading';
