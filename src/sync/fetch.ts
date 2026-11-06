@@ -21,7 +21,7 @@ const ENERGY_CONCURRENCY = 4;
 // The portal rate-limits in bursts; after a block of 429s it recovers. So a
 // failed meter is retried in a later pass after a cooldown, not hammered now.
 const ENERGY_PASSES = 5;
-const ENERGY_COOLDOWN_MS = 20_000;
+const ENERGY_COOLDOWN_MS = 60_000;
 
 export interface FetchEnergyOptions {
   concurrency?: number;

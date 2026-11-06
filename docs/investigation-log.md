@@ -23,7 +23,6 @@ Tools I used: Chrome DevTools (Network tab with Preserve log on, Sources search,
 - Ran the full crawl once (all 403 meters plus the export and transformer list), at most 4 requests at a time to be gentle.
 - The portal rate-limits in bursts: a batch of requests works, then it returns `429` for a while, then recovers. There is **no** `Retry-After` or rate-limit header to follow, so the only option is to wait and retry later.
 - Fix that worked: stop fast-retrying a 429, and re-fetch the few meters that failed in a later pass after a short cooldown. The second run finished with nothing missing.
-- Corrected an early wrong guess: not every meter reports every 30 minutes. Exactly 40 meters (J100000 to J100039, one per transformer) are 30-minute; the rest report once a day. Daily is the norm.
 - Found one real defect: 5 meters have a duplicated last row where some values are blank. Keeping the first row on a duplicate timestamp cleans this up.
 - Confirmed the hierarchy: 22 blank values can be filled from other meters on the same transformer, and DT-007 really does carry an old name ("Old Malviya Nagar Xfmr") alongside its current one.
 
@@ -31,5 +30,6 @@ Tools I used: Chrome DevTools (Network tab with Preserve log on, Sources search,
 
 - Chose a "sync then serve" design: pull everything from the portal once, clean it up, keep it in memory, and answer every request from that copy. Requests never touch the portal.
 - Built it in layers: portal client (login, signing, retries) -> normalizers (clean timestamps, numbers, enums, hierarchy) -> snapshot store and background sync -> API routes -> OpenAPI docs.
-- Tested the signing against a known-good value, and the routes with fake in-memory data so the tests make zero live calls.
-- Left the read API open. Protected only `POST /sync` (the one action that hits the portal) with an `X-API-Key`, plus a short cooldown so it cannot be spammed.
+- Made the sync incremental: it only fetches a meter's readings if it does not already have them. The portal data is frozen, so a meter fetched once never changes and never needs refetching. The first cold sync fetches all 403; after that each sync fetches only what is still missing, so steady-state syncs are tiny and fast.
+- Found the rate limit resets on about a 60 second window, and each pass can fetch roughly 120 meters before it trips. So fetching with a 60 second cooldown between passes, a full cold crawl takes 4 passes in total (the first pass runs instantly, then 3 more after a 60 second cooldown each) to cover all 403 meters. That is a maximum of about 3 minutes to get the full data.
+- Left the read API open. Protected only `POST /sync` (the one action that hits the portal to fetch fresh data) with an `X-API-Key`, plus a short cooldown so it cannot be spammed.
