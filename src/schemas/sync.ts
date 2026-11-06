@@ -22,6 +22,10 @@ export const SyncStatusResponse = Type.Object({
   meta: Meta,
 });
 
+export const SyncTriggerQuery = Type.Object({
+  full: Type.Optional(Type.Boolean()),
+});
+
 export const SyncTriggerResponse = Type.Object({
   data: Type.Object({
     accepted: Type.Boolean(),

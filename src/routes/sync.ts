@@ -3,7 +3,7 @@ import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { rateLimited } from '../lib/api-errors.js';
 import { requireApiKey } from '../lib/auth.js';
 import { meta, requireSnapshot } from '../lib/envelope.js';
-import { SyncStatusResponse, SyncTriggerResponse } from '../schemas/sync.js';
+import { SyncStatusResponse, SyncTriggerQuery, SyncTriggerResponse } from '../schemas/sync.js';
 
 const MANUAL_SYNC_COOLDOWN_SECONDS = 60;
 
@@ -31,10 +31,12 @@ export async function syncRoutes(appRaw: FastifyInstance): Promise<void> {
         tags: ['sync'],
         summary: 'Trigger a sync (protected by X-API-Key, fire-and-forget, returns 202)',
         security: [{ apiKey: [] }],
+        querystring: SyncTriggerQuery,
         response: { 202: SyncTriggerResponse },
       },
     },
-    async (_request, reply) => {
+    async (request, reply) => {
+      const full = request.query.full ?? false;
       const alreadyRunning = app.scheduler.isSyncing();
       const now = Date.now();
 
@@ -53,7 +55,7 @@ export async function syncRoutes(appRaw: FastifyInstance): Promise<void> {
       }
 
       void app.scheduler
-        .triggerSync()
+        .triggerSync({ full })
         .catch((err) => app.log.error({ err }, 'Manually triggered sync failed'));
       const snapshot = app.store.get();
       reply.code(202);

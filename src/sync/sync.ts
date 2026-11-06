@@ -23,17 +23,36 @@ function countChangedEnergy(previous: Snapshot | null, next: Record<string, stri
   return changed;
 }
 
+export interface RunSyncOptions {
+  // Refetch every meter's energy, ignoring what the previous snapshot holds.
+  // Default (false) is incremental: only new/missing/stale meters are fetched.
+  full?: boolean;
+}
+
 export async function runSync(
   client: PortalClient,
   store: SnapshotStore,
   logger?: SyncLogger,
+  options: RunSyncOptions = {},
 ): Promise<SyncStatus> {
   const startedAt = new Date().toISOString();
   const previous = store.get();
+  const full = options.full ?? false;
+
+  // The portal's data is frozen, so a meter whose readings we already have does
+  // not need refetching. Incremental fetching keeps each sync under the portal's
+  // burst rate limit and lets successive syncs converge on full coverage.
+  const hasGoodReadings = (id: string): boolean => {
+    const prev = previous?.meters.get(id);
+    return !!prev && prev.readingsStatus === 'ok' && prev.readings.length > 0;
+  };
 
   let fetched;
   try {
-    fetched = await fetchAll(client, { log: (m) => logger?.info(m) });
+    fetched = await fetchAll(client, {
+      log: (m) => logger?.info(m),
+      shouldFetchEnergy: full ? undefined : (id) => !hasGoodReadings(id),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger?.error(`Sync aborted, keeping previous snapshot: ${message}`);
@@ -65,12 +84,13 @@ export async function runSync(
     issues.push(...meterIssues);
     const networkPath = network.meterPaths.get(meter.meterId) ?? [];
 
+    const attempted = fetched.energy.has(meter.meterId);
     const energy = fetched.energy.get(meter.meterId);
     let readings: NormalizedReading[];
     let intervalMinutes: number | null;
     let readingsStatus: SnapshotMeter['readingsStatus'];
 
-    if (energy && !(energy instanceof Error)) {
+    if (attempted && energy && !(energy instanceof Error)) {
       const normalized = normalizeReadings(meter.meterId, energy);
       readings = normalized.readings;
       intervalMinutes = normalized.intervalMinutes;
@@ -78,7 +98,7 @@ export async function runSync(
       issues.push(...normalized.issues);
       mergedEnergyHashes[meter.meterId] = fetched.hashes.energy[meter.meterId]!;
       energyOk++;
-    } else {
+    } else if (attempted) {
       const reason = energy instanceof Error ? energy.message : 'no response';
       failures.push({ meterId: meter.meterId, error: reason });
       const prev = previous?.meters.get(meter.meterId);
@@ -109,6 +129,31 @@ export async function runSync(
             entityType: 'meter',
             entityId: meter.meterId,
             message: `Energy fetch failed this sync (${reason}) and no previous readings exist.`,
+          }),
+        );
+      }
+    } else {
+      // Not fetched this run (incremental skip): carry the readings we already
+      // have forward unchanged. We only skip meters with good previous readings.
+      const prev = previous?.meters.get(meter.meterId);
+      if (prev) {
+        readings = prev.readings;
+        intervalMinutes = prev.intervalMinutes;
+        readingsStatus = 'ok';
+        const prevHash = previous?.hashes.energy[meter.meterId];
+        if (prevHash) mergedEnergyHashes[meter.meterId] = prevHash;
+        energyOk++;
+      } else {
+        readings = [];
+        intervalMinutes = null;
+        readingsStatus = 'unavailable';
+        issues.push(
+          makeIssue({
+            code: 'readings_unavailable',
+            severity: 'error',
+            entityType: 'meter',
+            entityId: meter.meterId,
+            message: 'Skipped by incremental sync but no previous readings exist.',
           }),
         );
       }
@@ -157,8 +202,9 @@ export async function runSync(
   }
 
   logger?.info(
-    `Sync ${syncStatus.status}: ${energyOk} energy ok, ${energyFailed} failed, ` +
-      `data as of ${snapshot.dataAsOf ?? 'n/a'}`,
+    `Sync ${syncStatus.status}: ${energyOk} energy ok ` +
+      `(${fetched.energy.size} fetched this run, ${full ? 'full' : 'incremental'}), ` +
+      `${energyFailed} failed, data as of ${snapshot.dataAsOf ?? 'n/a'}`,
   );
   return syncStatus;
 }

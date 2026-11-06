@@ -1,7 +1,7 @@
 import type { PortalClient } from '../portal/client.js';
 import type { SnapshotStore, SyncStatus } from '../store/snapshot.js';
 import { loadSnapshot } from '../store/persistence.js';
-import { runSync, type SyncLogger } from './sync.js';
+import { runSync, type RunSyncOptions, type SyncLogger } from './sync.js';
 
 export interface SchedulerOptions {
   client: PortalClient;
@@ -27,9 +27,9 @@ export class SyncScheduler {
     this.logger = options.logger;
   }
 
-  triggerSync(): Promise<SyncStatus> {
+  triggerSync(options: RunSyncOptions = {}): Promise<SyncStatus> {
     if (this.inFlight) return this.inFlight;
-    this.inFlight = runSync(this.client, this.store, this.logger)
+    this.inFlight = runSync(this.client, this.store, this.logger, options)
       .then((status) => {
         this.lastStatus = status;
         return status;

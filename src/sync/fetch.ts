@@ -98,16 +98,26 @@ export async function fetchEnergy(
   return results;
 }
 
+export interface FetchAllOptions extends FetchEnergyOptions {
+  // Decide per meter whether to fetch its energy this run. Meters for which
+  // this returns false are left out of the energy map, so the caller can carry
+  // forward the readings it already has. Omit to fetch every meter.
+  shouldFetchEnergy?: (meterId: string) => boolean;
+}
+
 // Pull the full dataset: the signed export, all transformer pages, then energy
-// for every meter (with the cooldown retry passes above).
+// for every meter (with the cooldown retry passes above). The export and DTs
+// are always refetched (cheap, one request each); energy fetching can be made
+// incremental via shouldFetchEnergy.
 export async function fetchAll(
   client: PortalClient,
-  options: FetchEnergyOptions = {},
+  options: FetchAllOptions = {},
 ): Promise<FetchAllResult> {
   const exportData = await client.getExport();
   const dts = await client.getTransformers();
 
-  const meterIds = exportData.data.map((m) => m.meterId);
+  const allIds = exportData.data.map((m) => m.meterId);
+  const meterIds = options.shouldFetchEnergy ? allIds.filter(options.shouldFetchEnergy) : allIds;
   const energy = await fetchEnergy(client, meterIds, options);
 
   const energyHashes: Record<string, string> = {};
