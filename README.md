@@ -6,7 +6,7 @@ The Urja Meter Ops portal is an ageing internal web portal used to look up smart
 
 This service reverse-engineers the portal's internal JSON endpoints, pulls the full dataset once via a background **sync**, normalizes it, and holds an immutable **snapshot** in memory. It also saves that snapshot to disk (`data/snapshot.json`). Every API request is served from that snapshot, so the API stays fast and keeps working even if the portal is down.
 
-- **Snapshot**: one complete, cleaned copy of all the data, held in memory and disc, that the API answers from.
+- **Snapshot**: one complete, cleaned copy of all the data, held in memory and on disk, that the API answers from.
 - **Sync**: the background job that pulls everything from the portal and builds a new snapshot.
 
 - API base path: `/api/v1`
@@ -163,7 +163,7 @@ Example trimmed response (`GET /api/v1/meters?pageSize=1`):
 
 ## 3.2 Endpoints overview
 
-Full contract is in `openapi.json` and the live interactive docs (Scalar) at `/docs`. Short list:
+Full contract is in [openapi.json](./openapi.json) and the live interactive docs (Scalar) at `/docs`. Short list:
 
 | Method & path | What it does |
 |---|---|
@@ -220,7 +220,7 @@ Verified counts on the real data: 22 `hierarchy_value_repaired`, 5 duplicate-tim
 
 ## 5.1 How it talks to the portal
 
-The portal is a SvelteKit site with Better Auth cookie sessions. The service logs in with a form POST (needs an `Origin` header), gets a session cookie, then: makes one HMAC-signed bulk export call (all meters, their hierarchy, and geo), reads the transformer list, and fetches each meter's energy readings. Full details, quirks, and surprises are in `PROTOCOL.md`.
+The portal is a SvelteKit site with Better Auth cookie sessions. The service logs in with a form POST (needs an `Origin` header), gets a session cookie, then: makes one HMAC-signed bulk export call (all meters, their hierarchy, and geo), reads the transformer list, and fetches each meter's energy readings. Full details, quirks, and surprises are in [PROTOCOL.md](./PROTOCOL.md).
 
 ## 5.2 Testing (how to run, what is covered)
 
@@ -234,14 +234,14 @@ npm test         # run all tests
 
 ## 5.3 AI assistance
 
-The investigation of the portal was done by me, by hand, in the browser and with curl (see `docs/investigation-log.md`). I used an AI coding assistant as a tool, under my direction, to help write and review code and to draft the documentation. Design decisions and the portal reverse-engineering are my own.
+The investigation of the portal was done by me, by hand, in the browser and with curl (see [docs/investigation-log.md](./docs/investigation-log.md)). I used an AI coding assistant as a tool, under my direction, to help write and review code and to draft the documentation. Design decisions and the portal reverse-engineering are my own.
 
 ## 5.4 Links
 
-- `PROTOCOL.md`: how the portal actually works.
-- `openapi.json`: the API contract. Rendered at `/docs`.
-- `NOTES.md`: assumptions, design decisions and trade-offs, what was skipped, and what I would improve.
-- `REFLECTION.md`: the reflection answers.
-- `docs/investigation-log.md`: the step-by-step log of figuring the portal out.
+- [PROTOCOL.md](./PROTOCOL.md): how the portal actually works.
+- [openapi.json](./openapi.json): the API contract. Rendered at `/docs`.
+- [NOTES.md](./NOTES.md): assumptions, design decisions and trade-offs, what was skipped, and what I would improve.
+- [REFLECTION.md](./REFLECTION.md): the reflection answers.
+- [docs/investigation-log.md](./docs/investigation-log.md): the step-by-step log of figuring the portal out.
 
 ---

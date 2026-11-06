@@ -30,7 +30,7 @@
 
 ## What I intentionally left out, and why
 
-- **The SvelteKit `__data.json` page data.** It uses a special encoding (devalue) and has two different shapes (legacy vs v2). The bulk export already gives the same attributes more cleanly, so this was skipped. (Both formats are still documented in PROTOCOL.md.)
+- **The SvelteKit `__data.json` page data.** It uses a special encoding (devalue) and has two different shapes (legacy vs v2). The bulk export already gives the same attributes more cleanly, so this was skipped. (Both formats are still documented in [PROTOCOL.md](./PROTOCOL.md).)
 - **`/portal/meters/search`.** The bulk export already returns all meters, so the search endpoint is not needed.
 - **`/portal/meters/{id}/geo`.** The export already includes geo, so the separate geo call is not needed.
 

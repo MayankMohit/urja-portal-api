@@ -6,7 +6,7 @@ The portal is a SvelteKit web app with Better Auth cookie sessions, served over 
 
 ## 1.2 How I investigated
 
-Chrome DevTools (Network tab with "Preserve log", Sources search for `/portal/`, and the Console for testing the signing), plus curl in Git Bash, plus small throwaway counting scripts. See `docs/investigation-log.md` for the timeline.
+Chrome DevTools (Network tab with "Preserve log", Sources search for `/portal/`, and the Console for testing the signing), plus curl in Git Bash, plus small throwaway counting scripts. See [docs/investigation-log.md](./docs/investigation-log.md) for the timeline.
 
 ## 1.3 What data is available and how to get it
 
