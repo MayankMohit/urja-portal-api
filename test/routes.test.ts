@@ -224,6 +224,30 @@ describe('routes (no snapshot)', () => {
   });
 });
 
+describe('POST /api/v1/sync (protected)', () => {
+  it('is disabled with 403 when no API_KEY is configured', async () => {
+    const app = await buildTestApp();
+    const res = await app.inject({ method: 'POST', url: '/api/v1/sync' });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error.code).toBe('sync_disabled');
+    await app.close();
+  });
+
+  it('rejects a missing or wrong X-API-Key with 401 when a key is configured', async () => {
+    const app = await buildTestApp(true, { apiKey: 'test-key' });
+    const missing = await app.inject({ method: 'POST', url: '/api/v1/sync' });
+    expect(missing.statusCode).toBe(401);
+    expect(missing.json().error.code).toBe('unauthorized');
+    const wrong = await app.inject({
+      method: 'POST',
+      url: '/api/v1/sync',
+      headers: { 'x-api-key': 'nope' },
+    });
+    expect(wrong.statusCode).toBe(401);
+    await app.close();
+  });
+});
+
 describe('docs', () => {
   let app: FastifyInstance;
 

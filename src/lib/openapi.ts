@@ -25,6 +25,13 @@ export async function registerDocs(app: FastifyInstance): Promise<void> {
         version: '1.0.0',
       },
       servers: [{ url: '/', description: 'This service' }],
+      components: {
+        securitySchemes: {
+          // Only POST /sync is protected. It is sent as the X-API-Key header and
+          // enforced only when API_KEY is configured on the server.
+          apiKey: { type: 'apiKey', in: 'header', name: 'X-API-Key' },
+        },
+      },
       tags: [
         { name: 'health', description: 'Service and snapshot health.' },
         { name: 'meters', description: 'Smart meters: list, detail and interval readings.' },

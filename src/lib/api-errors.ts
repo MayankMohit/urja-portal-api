@@ -10,6 +10,8 @@ export class ApiError extends Error {
     readonly code: string,
     message: string,
     readonly details?: Record<string, unknown>,
+    // Extra response headers to send with this error, e.g. Retry-After on a 429.
+    readonly headers?: Record<string, string>,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -39,9 +41,21 @@ export const notFound = (message: string, details?: Record<string, unknown>): Ap
 export const badRequest = (message: string, details?: Record<string, unknown>): ApiError =>
   new ApiError(400, 'bad_request', message, details);
 
+export const unauthorized = (message: string): ApiError =>
+  new ApiError(401, 'unauthorized', message);
+
+export const forbidden = (message: string, code = 'forbidden'): ApiError =>
+  new ApiError(403, code, message);
+
+export const rateLimited = (message: string, retryAfterSeconds: number): ApiError =>
+  new ApiError(429, 'rate_limited', message, { retryAfterSeconds }, {
+    'retry-after': String(retryAfterSeconds),
+  });
+
 export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
     if (error instanceof ApiError) {
+      if (error.headers) reply.headers(error.headers);
       reply.status(error.statusCode).send(error.body());
       return;
     }

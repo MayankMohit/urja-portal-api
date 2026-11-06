@@ -186,8 +186,11 @@ function makeSnapshot(): Snapshot {
   };
 }
 
-export async function buildTestApp(seed = true): Promise<FastifyInstance> {
-  const { app } = await buildApp({ config: TEST_CONFIG });
+export async function buildTestApp(
+  seed = true,
+  configOverrides: Partial<Config> = {},
+): Promise<FastifyInstance> {
+  const { app } = await buildApp({ config: { ...TEST_CONFIG, ...configOverrides } });
   if (seed) app.store.replace(makeSnapshot());
   await app.ready();
   return app;

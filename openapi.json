@@ -6,6 +6,13 @@
     "version": "1.0.0"
   },
   "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    },
     "schemas": {
       "def-0": {
         "type": "object",
@@ -2266,9 +2273,14 @@
     },
     "/api/v1/sync": {
       "post": {
-        "summary": "Trigger a sync (fire-and-forget, returns 202)",
+        "summary": "Trigger a sync (protected by X-API-Key, fire-and-forget, returns 202)",
         "tags": [
           "sync"
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
         ],
         "responses": {
           "202": {
