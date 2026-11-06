@@ -1,0 +1,15 @@
+node_modules
+dist
+coverage
+.git
+.gitignore
+.env
+data
+*.log
+*.local.md
+CLAUDE.md
+web/node_modules
+web/dist
+Dockerfile
+.dockerignore
+docker-compose.yml
