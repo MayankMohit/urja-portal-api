@@ -5,6 +5,7 @@ import type {
   DataQualityIssue,
   HierarchyLevel,
   NetworkPathNode,
+  NetworkTreeNode,
   NormalizedMeter,
   NormalizedReading,
   NormalizedTransformer,
@@ -42,6 +43,18 @@ function rawHierarchy(): NormalizedMeter['rawHierarchy'] {
   const h = {} as NormalizedMeter['rawHierarchy'];
   for (const { level, code, name } of LEVELS) h[level] = { code, name };
   return h;
+}
+
+function makeTree(): NetworkTreeNode[] {
+  const path = meterPath();
+  let child: NetworkTreeNode[] = [];
+  let root: NetworkTreeNode | null = null;
+  for (let i = path.length - 1; i >= 0; i--) {
+    const n = path[i]!;
+    root = { id: n.id, level: n.level, code: n.code, name: n.name, meterCount: 2, children: child };
+    child = [root];
+  }
+  return [root!];
 }
 
 function meter(overrides: Partial<NormalizedMeter>): NormalizedMeter {
@@ -139,6 +152,14 @@ function makeSnapshot(): Snapshot {
       originalValue: '',
       repairedValue: 'C-01',
     },
+    {
+      code: 'reading_duplicate_timestamp',
+      severity: 'warning',
+      entityType: 'reading',
+      entityId: 'J100000',
+      field: 'timestamp',
+      message: 'Duplicate timestamp; later row dropped, first kept.',
+    },
   ];
 
   const sync: SyncStatus = {
@@ -157,7 +178,7 @@ function makeSnapshot(): Snapshot {
     dataAsOf: '2026-06-24T00:30:00+05:30',
     meters,
     transformers: new Map([['DT-001', transformer]]),
-    tree: [],
+    tree: makeTree(),
     issues,
     metersByDt: new Map([['DT-001', ['J100000', 'J100001']]]),
     sync,

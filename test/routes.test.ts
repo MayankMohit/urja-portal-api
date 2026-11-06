@@ -134,6 +134,69 @@ describe('routes (seeded snapshot)', () => {
       expect(body.error.code).toBe('not_found');
     });
   });
+
+  describe('GET /api/v1/network', () => {
+    it('returns the full tree', async () => {
+      const { status, body } = await get('/api/v1/network');
+      expect(status).toBe(200);
+      expect(body.data).toHaveLength(1);
+      expect(body.data[0].level).toBe('zone');
+      expect(body.data[0].children[0].level).toBe('circle');
+    });
+
+    it('trims to the requested depth', async () => {
+      const { body } = await get('/api/v1/network?depth=1');
+      expect(body.data[0].children).toHaveLength(0);
+    });
+
+    it('rejects a non-numeric depth with 400', async () => {
+      const { status, body } = await get('/api/v1/network?depth=deep');
+      expect(status).toBe(400);
+      expect(body.error.code).toBe('bad_request');
+    });
+  });
+
+  describe('GET /api/v1/data-quality', () => {
+    it('returns all issues with counts by code', async () => {
+      const { status, body } = await get('/api/v1/data-quality');
+      expect(status).toBe(200);
+      expect(body.data.total).toBe(2);
+      expect(body.data.countsByCode.hierarchy_value_repaired).toBe(1);
+      expect(body.data.countsByCode.reading_duplicate_timestamp).toBe(1);
+    });
+
+    it('filters by severity', async () => {
+      const { body } = await get('/api/v1/data-quality?severity=info');
+      expect(body.data.total).toBe(1);
+      expect(body.data.issues[0].code).toBe('hierarchy_value_repaired');
+    });
+
+    it('filters by entityType', async () => {
+      const { body } = await get('/api/v1/data-quality?entityType=reading');
+      expect(body.data.total).toBe(1);
+    });
+
+    it('filters by code', async () => {
+      const { body } = await get('/api/v1/data-quality?code=hierarchy_value_repaired');
+      expect(body.data.total).toBe(1);
+    });
+
+    it('rejects an invalid severity with 400', async () => {
+      const { status, body } = await get('/api/v1/data-quality?severity=critical');
+      expect(status).toBe(400);
+      expect(body.error.code).toBe('bad_request');
+    });
+  });
+
+  describe('GET /api/v1/sync/status', () => {
+    it('returns the last sync summary', async () => {
+      const { status, body } = await get('/api/v1/sync/status');
+      expect(status).toBe(200);
+      expect(body.data.status).toBe('ok');
+      expect(body.data.meterCount).toBe(2);
+      expect(body.data.energyFailed).toBe(1);
+    });
+  });
 });
 
 describe('routes (no snapshot)', () => {
