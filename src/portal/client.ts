@@ -136,6 +136,12 @@ export class PortalClient {
     return this.parseJson<T>(res, 'GET', `${path}?${query}`);
   }
 
+  // Read-only view of the session for the health route. Never exposes the cookie
+  // value or the signing secret, only when we last logged in.
+  getSessionInfo(): { loggedInAt: number | null } {
+    return { loggedInAt: this.loggedInAt };
+  }
+
   // The signed bulk export: all 403 meters in one request. `page` is ignored by the portal.
   async getExport(): Promise<RawExport> {
     return this.getSignedJson<RawExport>('/portal/export', 'page=1');

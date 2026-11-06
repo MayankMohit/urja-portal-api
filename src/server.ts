@@ -1,13 +1,21 @@
 import 'dotenv/config';
-import Fastify from 'fastify';
+import { loadConfig } from './lib/config.js';
+import { buildApp } from './app.js';
 
-const app = Fastify({
-  logger: process.env.NODE_ENV === 'production'
-    ? true
-    : { transport: { target: 'pino-pretty' } },
-});
-app.get('/api/v1/health', async () => ({ status: 'ok' }));
-await app.listen({
-  port: Number(process.env.PORT ?? 3000),
-  host: process.env.HOST ?? '127.0.0.1',
-});
+const config = loadConfig();
+
+const logger =
+  process.env.NODE_ENV === 'production' ? true : { transport: { target: 'pino-pretty' } };
+
+const { app, scheduler } = await buildApp({ config, logger });
+
+await scheduler.start();
+
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.on(signal, () => {
+    scheduler.stop();
+    void app.close().then(() => process.exit(0));
+  });
+}
+
+await app.listen({ host: config.host, port: config.port });
