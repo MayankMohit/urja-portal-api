@@ -80,6 +80,8 @@ curl http://localhost:3000/api/v1/health
 
 Then open http://localhost:3000/docs. The first sync runs in the background (up to ~3 minutes on a cold start).
 
+**Note**: The service reports portal "reachable" in `/health` based on whether the last sync succeeded, not a live ping, so health checks never call the portal.
+
 **Note**: if you ever want a fresh start, stop the container first (`docker compose down`), then delete `data/snapshot.json`, then start again.
 
 ## 2.3 Configuration (environment variables)
@@ -199,6 +201,22 @@ Example:
 curl -X POST http://localhost:3000/api/v1/sync -H "X-API-Key: dev-local-key"
 # add ?full=true to refetch every meter instead of only the missing ones
 ```
+
+## 4. Data quality handling
+
+The cleaning layer records a data-quality "issue" for anything it changes or cannot parse, and the API exposes them at `GET /api/v1/data-quality`. Each issue has: a `code`, a `severity` (info/warning/error), an `entityType` (meter/transformer/reading), an `entityId`, an optional `field`, a `message`, and optionally the original and repaired values.
+
+Rules:
+- **Timestamps**: parsed as IST, output as ISO 8601 with `+05:30`. An unparseable timestamp drops that reading and logs an issue.
+- **Numbers**: strings parsed to numbers; unparseable becomes null plus a `reading_unparseable_value` issue.
+- **Sorting and duplicates**: readings sorted by time; a duplicate timestamp keeps the first row and logs an issue.
+- **Per-interval consumption**: for each reading after the first, consumption is this register minus the previous one. A negative difference becomes null plus a `register_decrease` issue. A gap bigger than the meter's interval is still computed but flagged `gapBefore`.
+- **Interval detection**: the meter's interval is the most common gap between readings (30 minutes for 40 meters, daily for the rest).
+- **Power factor**: kWh/kVAh per interval.
+- **Enums tidied**: status `installed | faulty | decommissioned`; phase `single | three`; install type `whole_current | ct_operated`; build `legacy | v2`.
+- **Hierarchy**: node ID is the full path of codes. A blank code or name is filled from other meters on the same DT and flagged `hierarchy_value_repaired`; if no sibling has it, left empty and flagged `hierarchy_value_missing`. A meter's DT name that differs from the dts list is replaced, the old name kept as an alias, flagged `dt_name_mismatch`.
+
+Verified counts on the real data: 22 `hierarchy_value_repaired`, 5 duplicate-timestamp issues (the same 5 meters are the only unparseable values), 1 `dt_name_mismatch`, 0 missing hierarchy values left, and J100000 power factor 0.933.
 
 ## 5.1 How it talks to the portal
 
