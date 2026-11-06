@@ -1,0 +1,2376 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Urja Meter Ops API",
+    "description": "A clean, read-only API over the legacy Urja Meter Ops portal, which has no API of its own.\n\nThe service syncs everything from the portal in the background, normalizes it, and holds an\nimmutable in-memory snapshot. Every request here is served from that snapshot; no request ever\nreaches the portal. List responses carry `meta.syncedAt` (when the snapshot was fetched) and\n`meta.dataAsOf` (the latest reading timestamp), so a consumer always knows how fresh the data is.\n\nBefore the first sync finishes, data routes return `503 snapshot_unavailable`. Unknown ids return\n`404 not_found`; invalid parameters return `400 bad_request`. Every error uses the envelope\n`{ error: { code, message, details? } }`.",
+    "version": "1.0.0"
+  },
+  "components": {
+    "schemas": {
+      "def-0": {
+        "type": "object",
+        "required": [
+          "id",
+          "level",
+          "code",
+          "name",
+          "meterCount",
+          "children"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "zone"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "circle"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "division"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "subdivision"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "substation"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "feeder"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "dt"
+                ]
+              }
+            ]
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meterCount": {
+            "type": "integer"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/def-0"
+            }
+          }
+        },
+        "title": "NetworkTreeNode"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "summary": "Service and snapshot health",
+        "tags": [
+          "health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "portal",
+                    "snapshot"
+                  ],
+                  "properties": {
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "ok"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "degraded"
+                          ]
+                        }
+                      ]
+                    },
+                    "portal": {
+                      "type": "object",
+                      "required": [
+                        "reachable",
+                        "lastLoginAt",
+                        "sessionAgeSeconds"
+                      ],
+                      "properties": {
+                        "reachable": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastLoginAt": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "sessionAgeSeconds": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "snapshot": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "syncedAt",
+                            "dataAsOf",
+                            "meterCount",
+                            "lastSyncStatus"
+                          ],
+                          "properties": {
+                            "syncedAt": {
+                              "type": "string"
+                            },
+                            "dataAsOf": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "meterCount": {
+                              "type": "integer"
+                            },
+                            "lastSyncStatus": {
+                              "anyOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "ok"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "partial"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "failed"
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meters": {
+      "get": {
+        "summary": "List and filter meters",
+        "tags": [
+          "meters"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "installed"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "faulty"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "decommissioned"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "make",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "single"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "three"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "phase",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "whole_current"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "ct_operated"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "installType",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "legacy"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "v2"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "build",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "zone",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "circle",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "division",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "subdivision",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "substation",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "feeder",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "transformer",
+            "required": false,
+            "description": "DT code, e.g. DT-001."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Case-insensitive substring of meter id or serial."
+          },
+          {
+            "schema": {
+              "pattern": "^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "near",
+            "required": false,
+            "description": "lat,lng. Adds distanceKm and sorts by distance."
+          },
+          {
+            "schema": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "in": "query",
+            "name": "radiusKm",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "meterId",
+                          "serialNo",
+                          "make",
+                          "phase",
+                          "status",
+                          "installType",
+                          "build",
+                          "dtCode",
+                          "geo"
+                        ],
+                        "properties": {
+                          "meterId": {
+                            "type": "string"
+                          },
+                          "serialNo": {
+                            "type": "string"
+                          },
+                          "make": {
+                            "type": "string"
+                          },
+                          "phase": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "single"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "three"
+                                ]
+                              }
+                            ]
+                          },
+                          "status": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "installed"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "faulty"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "decommissioned"
+                                ]
+                              }
+                            ]
+                          },
+                          "installType": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "whole_current"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "ct_operated"
+                                ]
+                              }
+                            ]
+                          },
+                          "build": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "legacy"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "v2"
+                                ]
+                              }
+                            ]
+                          },
+                          "dtCode": {
+                            "type": "string"
+                          },
+                          "geo": {
+                            "type": "object",
+                            "required": [
+                              "lat",
+                              "lng"
+                            ],
+                            "properties": {
+                              "lat": {
+                                "type": "number"
+                              },
+                              "lng": {
+                                "type": "number"
+                              }
+                            }
+                          },
+                          "distanceKm": {
+                            "type": "number"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "total",
+                        "syncedAt",
+                        "dataAsOf"
+                      ],
+                      "properties": {
+                        "page": {
+                          "type": "integer"
+                        },
+                        "pageSize": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "syncedAt": {
+                          "type": "string"
+                        },
+                        "dataAsOf": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meters/{meterId}": {
+      "get": {
+        "summary": "Get one meter with its network path and issues",
+        "tags": [
+          "meters"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "meterId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "meterId",
+                        "serialNo",
+                        "make",
+                        "phase",
+                        "status",
+                        "installType",
+                        "build",
+                        "dtCode",
+                        "geo",
+                        "networkPath",
+                        "aliases",
+                        "readingsSummary",
+                        "issues"
+                      ],
+                      "properties": {
+                        "meterId": {
+                          "type": "string"
+                        },
+                        "serialNo": {
+                          "type": "string"
+                        },
+                        "make": {
+                          "type": "string"
+                        },
+                        "phase": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "single"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "three"
+                              ]
+                            }
+                          ]
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "installed"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "faulty"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "decommissioned"
+                              ]
+                            }
+                          ]
+                        },
+                        "installType": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "whole_current"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ct_operated"
+                              ]
+                            }
+                          ]
+                        },
+                        "build": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "legacy"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "v2"
+                              ]
+                            }
+                          ]
+                        },
+                        "dtCode": {
+                          "type": "string"
+                        },
+                        "geo": {
+                          "type": "object",
+                          "required": [
+                            "lat",
+                            "lng"
+                          ],
+                          "properties": {
+                            "lat": {
+                              "type": "number"
+                            },
+                            "lng": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        "networkPath": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "level",
+                              "id",
+                              "code",
+                              "name"
+                            ],
+                            "properties": {
+                              "level": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "zone"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "circle"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "division"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "subdivision"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "substation"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "feeder"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "dt"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "id": {
+                                "description": "Full code path, e.g. Z-01/C-01/D-01/.../DT-001.",
+                                "type": "string"
+                              },
+                              "code": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "name": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "repaired": {
+                                "type": "boolean"
+                              }
+                            }
+                          }
+                        },
+                        "aliases": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "readingsSummary": {
+                          "type": "object",
+                          "required": [
+                            "intervalMinutes",
+                            "status",
+                            "count",
+                            "first",
+                            "last"
+                          ],
+                          "properties": {
+                            "intervalMinutes": {
+                              "anyOf": [
+                                {
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "status": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "ok"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "stale"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "unavailable"
+                                  ]
+                                }
+                              ]
+                            },
+                            "count": {
+                              "type": "integer"
+                            },
+                            "first": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "last": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "issues": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "code",
+                              "severity",
+                              "entityType",
+                              "entityId",
+                              "message"
+                            ],
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "severity": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "info"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "warning"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "error"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "entityType": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "meter"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "transformer"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "reading"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "entityId": {
+                                "type": "string"
+                              },
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "originalValue": {},
+                              "repairedValue": {}
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "syncedAt",
+                        "dataAsOf"
+                      ],
+                      "properties": {
+                        "syncedAt": {
+                          "description": "When this snapshot was fetched from the portal.",
+                          "type": "string"
+                        },
+                        "dataAsOf": {
+                          "anyOf": [
+                            {
+                              "description": "Latest reading timestamp across all meters.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meters/{meterId}/readings": {
+      "get": {
+        "summary": "Get meter interval readings and a summary",
+        "tags": [
+          "meters"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "ISO 8601 lower bound (inclusive)."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "ISO 8601 upper bound (inclusive)."
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "default": 230,
+              "type": "number"
+            },
+            "in": "query",
+            "name": "nominalVoltage",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 0,
+              "maximum": 100,
+              "default": 6,
+              "type": "number"
+            },
+            "in": "query",
+            "name": "tolerancePct",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "meterId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "meterId",
+                        "intervalMinutes",
+                        "readingsStatus",
+                        "readings",
+                        "summary"
+                      ],
+                      "properties": {
+                        "meterId": {
+                          "type": "string"
+                        },
+                        "intervalMinutes": {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "readingsStatus": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ok"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "stale"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "unavailable"
+                              ]
+                            }
+                          ]
+                        },
+                        "readings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "timestamp",
+                              "kwhRegister",
+                              "kvahRegister",
+                              "voltageR",
+                              "kwh",
+                              "kvah",
+                              "powerFactor",
+                              "gapBefore"
+                            ],
+                            "properties": {
+                              "timestamp": {
+                                "type": "string"
+                              },
+                              "kwhRegister": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "kvahRegister": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "voltageR": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "kwh": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "kvah": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "powerFactor": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "gapBefore": {
+                                "type": "boolean"
+                              }
+                            }
+                          }
+                        },
+                        "summary": {
+                          "type": "object",
+                          "required": [
+                            "count",
+                            "totalKwh",
+                            "minVoltage",
+                            "maxVoltage",
+                            "avgVoltage",
+                            "outOfBandCount",
+                            "voltageBand"
+                          ],
+                          "properties": {
+                            "count": {
+                              "type": "integer"
+                            },
+                            "totalKwh": {
+                              "type": "number"
+                            },
+                            "minVoltage": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "maxVoltage": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "avgVoltage": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "outOfBandCount": {
+                              "type": "integer"
+                            },
+                            "voltageBand": {
+                              "type": "object",
+                              "required": [
+                                "min",
+                                "max",
+                                "nominal",
+                                "tolerancePct"
+                              ],
+                              "properties": {
+                                "min": {
+                                  "type": "number"
+                                },
+                                "max": {
+                                  "type": "number"
+                                },
+                                "nominal": {
+                                  "type": "number"
+                                },
+                                "tolerancePct": {
+                                  "type": "number"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "syncedAt",
+                        "dataAsOf"
+                      ],
+                      "properties": {
+                        "syncedAt": {
+                          "description": "When this snapshot was fetched from the portal.",
+                          "type": "string"
+                        },
+                        "dataAsOf": {
+                          "anyOf": [
+                            {
+                              "description": "Latest reading timestamp across all meters.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transformers": {
+      "get": {
+        "summary": "List all transformers",
+        "tags": [
+          "transformers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "code",
+                          "name",
+                          "aliases",
+                          "feederCode",
+                          "capacityKva",
+                          "meterCount",
+                          "networkPath"
+                        ],
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "aliases": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "feederCode": {
+                            "type": "string"
+                          },
+                          "capacityKva": {
+                            "type": "number"
+                          },
+                          "meterCount": {
+                            "type": "integer"
+                          },
+                          "networkPath": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "level",
+                                "id",
+                                "code",
+                                "name"
+                              ],
+                              "properties": {
+                                "level": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "zone"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "circle"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "division"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "subdivision"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "substation"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "feeder"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "dt"
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "id": {
+                                  "description": "Full code path, e.g. Z-01/C-01/D-01/.../DT-001.",
+                                  "type": "string"
+                                },
+                                "code": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "name": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "repaired": {
+                                  "type": "boolean"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "total",
+                        "syncedAt",
+                        "dataAsOf"
+                      ],
+                      "properties": {
+                        "page": {
+                          "type": "integer"
+                        },
+                        "pageSize": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "syncedAt": {
+                          "type": "string"
+                        },
+                        "dataAsOf": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transformers/{code}": {
+      "get": {
+        "summary": "Get one transformer with its meters",
+        "tags": [
+          "transformers"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "code",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "allOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "code",
+                            "name",
+                            "aliases",
+                            "feederCode",
+                            "capacityKva",
+                            "meterCount",
+                            "networkPath"
+                          ],
+                          "properties": {
+                            "code": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "aliases": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "feederCode": {
+                              "type": "string"
+                            },
+                            "capacityKva": {
+                              "type": "number"
+                            },
+                            "meterCount": {
+                              "type": "integer"
+                            },
+                            "networkPath": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "level",
+                                  "id",
+                                  "code",
+                                  "name"
+                                ],
+                                "properties": {
+                                  "level": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "zone"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "circle"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "division"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "subdivision"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "substation"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "feeder"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "dt"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "id": {
+                                    "description": "Full code path, e.g. Z-01/C-01/D-01/.../DT-001.",
+                                    "type": "string"
+                                  },
+                                  "code": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "name": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "repaired": {
+                                    "type": "boolean"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "meters"
+                          ],
+                          "properties": {
+                            "meters": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "meterId",
+                                  "serialNo",
+                                  "make",
+                                  "phase",
+                                  "status",
+                                  "installType",
+                                  "build",
+                                  "dtCode",
+                                  "geo"
+                                ],
+                                "properties": {
+                                  "meterId": {
+                                    "type": "string"
+                                  },
+                                  "serialNo": {
+                                    "type": "string"
+                                  },
+                                  "make": {
+                                    "type": "string"
+                                  },
+                                  "phase": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "single"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "three"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "status": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "installed"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "faulty"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "decommissioned"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "installType": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "whole_current"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "ct_operated"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "build": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "legacy"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "v2"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "dtCode": {
+                                    "type": "string"
+                                  },
+                                  "geo": {
+                                    "type": "object",
+                                    "required": [
+                                      "lat",
+                                      "lng"
+                                    ],
+                                    "properties": {
+                                      "lat": {
+                                        "type": "number"
+                                      },
+                                      "lng": {
+                                        "type": "number"
+                                      }
+                                    }
+                                  },
+                                  "distanceKm": {
+                                    "type": "number"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "syncedAt",
+                        "dataAsOf"
+                      ],
+                      "properties": {
+                        "syncedAt": {
+                          "description": "When this snapshot was fetched from the portal.",
+                          "type": "string"
+                        },
+                        "dataAsOf": {
+                          "anyOf": [
+                            {
+                              "description": "Latest reading timestamp across all meters.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/network": {
+      "get": {
+        "summary": "Get the repaired network hierarchy tree",
+        "tags": [
+          "network"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "description": "Levels to include from the root; omit for the full tree."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/def-0"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "syncedAt",
+                        "dataAsOf"
+                      ],
+                      "properties": {
+                        "syncedAt": {
+                          "description": "When this snapshot was fetched from the portal.",
+                          "type": "string"
+                        },
+                        "dataAsOf": {
+                          "anyOf": [
+                            {
+                              "description": "Latest reading timestamp across all meters.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/data-quality": {
+      "get": {
+        "summary": "List data-quality issues with counts by code",
+        "tags": [
+          "data-quality"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "code",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "info"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "warning"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "error"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "severity",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "meter"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "transformer"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "reading"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "entityType",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "total",
+                        "countsByCode",
+                        "issues"
+                      ],
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "countsByCode": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer"
+                          }
+                        },
+                        "issues": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "code",
+                              "severity",
+                              "entityType",
+                              "entityId",
+                              "message"
+                            ],
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "severity": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "info"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "warning"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "error"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "entityType": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "meter"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "transformer"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "reading"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "entityId": {
+                                "type": "string"
+                              },
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "originalValue": {},
+                              "repairedValue": {}
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "syncedAt",
+                        "dataAsOf"
+                      ],
+                      "properties": {
+                        "syncedAt": {
+                          "description": "When this snapshot was fetched from the portal.",
+                          "type": "string"
+                        },
+                        "dataAsOf": {
+                          "anyOf": [
+                            {
+                              "description": "Latest reading timestamp across all meters.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sync/status": {
+      "get": {
+        "summary": "Get the last sync summary",
+        "tags": [
+          "sync"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "startedAt",
+                        "finishedAt",
+                        "status",
+                        "meterCount",
+                        "energyOk",
+                        "energyFailed",
+                        "failures",
+                        "changed"
+                      ],
+                      "properties": {
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "finishedAt": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ok"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "partial"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "failed"
+                              ]
+                            }
+                          ]
+                        },
+                        "meterCount": {
+                          "type": "integer"
+                        },
+                        "energyOk": {
+                          "type": "integer"
+                        },
+                        "energyFailed": {
+                          "type": "integer"
+                        },
+                        "failures": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "meterId",
+                              "error"
+                            ],
+                            "properties": {
+                              "meterId": {
+                                "type": "string"
+                              },
+                              "error": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "changed": {
+                          "type": "object",
+                          "required": [
+                            "export",
+                            "dts",
+                            "energy"
+                          ],
+                          "properties": {
+                            "export": {
+                              "type": "boolean"
+                            },
+                            "dts": {
+                              "type": "boolean"
+                            },
+                            "energy": {
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "error": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "syncedAt",
+                        "dataAsOf"
+                      ],
+                      "properties": {
+                        "syncedAt": {
+                          "description": "When this snapshot was fetched from the portal.",
+                          "type": "string"
+                        },
+                        "dataAsOf": {
+                          "anyOf": [
+                            {
+                              "description": "Latest reading timestamp across all meters.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sync": {
+      "post": {
+        "summary": "Trigger a sync (fire-and-forget, returns 202)",
+        "tags": [
+          "sync"
+        ],
+        "responses": {
+          "202": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "accepted",
+                        "alreadyRunning",
+                        "startedAt"
+                      ],
+                      "properties": {
+                        "accepted": {
+                          "type": "boolean"
+                        },
+                        "alreadyRunning": {
+                          "type": "boolean"
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "meta": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "syncedAt",
+                            "dataAsOf"
+                          ],
+                          "properties": {
+                            "syncedAt": {
+                              "description": "When this snapshot was fetched from the portal.",
+                              "type": "string"
+                            },
+                            "dataAsOf": {
+                              "anyOf": [
+                                {
+                                  "description": "Latest reading timestamp across all meters.",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "This service"
+    }
+  ],
+  "tags": [
+    {
+      "name": "health",
+      "description": "Service and snapshot health."
+    },
+    {
+      "name": "meters",
+      "description": "Smart meters: list, detail and interval readings."
+    },
+    {
+      "name": "transformers",
+      "description": "Distribution transformers (DTs) and the meters on each."
+    },
+    {
+      "name": "network",
+      "description": "The repaired network hierarchy tree."
+    },
+    {
+      "name": "data-quality",
+      "description": "Issues found while normalizing the portal data."
+    },
+    {
+      "name": "sync",
+      "description": "Sync status and manual trigger."
+    }
+  ]
+}

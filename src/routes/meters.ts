@@ -93,7 +93,7 @@ export async function meterRoutes(appRaw: FastifyInstance): Promise<void> {
 
   app.get(
     '/meters',
-    { schema: { querystring: MetersQuery, response: { 200: MetersListResponse } } },
+    { schema: { tags: ['meters'], summary: 'List and filter meters', querystring: MetersQuery, response: { 200: MetersListResponse } } },
     async (request) => {
       const snapshot = requireSnapshot(app.store);
       const query = request.query;
@@ -125,7 +125,7 @@ export async function meterRoutes(appRaw: FastifyInstance): Promise<void> {
 
   app.get(
     '/meters/:meterId',
-    { schema: { params: MeterParams, response: { 200: MeterDetailResponse } } },
+    { schema: { tags: ['meters'], summary: 'Get one meter with its network path and issues', params: MeterParams, response: { 200: MeterDetailResponse } } },
     async (request) => {
       const snapshot = requireSnapshot(app.store);
       const { meterId } = request.params;
@@ -165,7 +165,7 @@ export async function meterRoutes(appRaw: FastifyInstance): Promise<void> {
 
   app.get(
     '/meters/:meterId/readings',
-    { schema: { params: MeterParams, querystring: ReadingsQuery, response: { 200: ReadingsResponse } } },
+    { schema: { tags: ['meters'], summary: 'Get meter interval readings and a summary', params: MeterParams, querystring: ReadingsQuery, response: { 200: ReadingsResponse } } },
     async (request) => {
       const snapshot = requireSnapshot(app.store);
       const { meterId } = request.params;

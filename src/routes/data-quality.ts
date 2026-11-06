@@ -8,7 +8,7 @@ export async function dataQualityRoutes(appRaw: FastifyInstance): Promise<void> 
 
   app.get(
     '/data-quality',
-    { schema: { querystring: DataQualityQuery, response: { 200: DataQualityResponse } } },
+    { schema: { tags: ['data-quality'], summary: 'List data-quality issues with counts by code', querystring: DataQualityQuery, response: { 200: DataQualityResponse } } },
     async (request) => {
       const snapshot = requireSnapshot(app.store);
       const { code, severity, entityType } = request.query;

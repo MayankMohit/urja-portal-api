@@ -223,3 +223,29 @@ describe('routes (no snapshot)', () => {
     expect(res.json().error.code).toBe('snapshot_unavailable');
   });
 });
+
+describe('docs', () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = await buildTestApp(false);
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('serves the OpenAPI spec with every route', async () => {
+    const res = await app.inject({ method: 'GET', url: '/openapi.json' });
+    expect(res.statusCode).toBe(200);
+    const spec = res.json();
+    expect(spec.openapi).toBe('3.1.0');
+    expect(Object.keys(spec.paths)).toHaveLength(10);
+  });
+
+  it('serves the Scalar docs UI', async () => {
+    const res = await app.inject({ method: 'GET', url: '/docs/' });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('text/html');
+  });
+});

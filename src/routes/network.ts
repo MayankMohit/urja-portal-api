@@ -16,7 +16,7 @@ export async function networkRoutes(appRaw: FastifyInstance): Promise<void> {
 
   app.get(
     '/network',
-    { schema: { querystring: NetworkQuery, response: { 200: NetworkResponse } } },
+    { schema: { tags: ['network'], summary: 'Get the repaired network hierarchy tree', querystring: NetworkQuery, response: { 200: NetworkResponse } } },
     async (request) => {
       const snapshot = requireSnapshot(app.store);
       const { depth } = request.query;

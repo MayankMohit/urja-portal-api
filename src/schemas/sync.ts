@@ -1,5 +1,5 @@
 import { Type } from '@sinclair/typebox';
-import { Meta } from './common.js';
+import { Meta, Nullable } from './common.js';
 
 export const SyncStatusSchema = Type.Object({
   startedAt: Type.String(),
@@ -20,4 +20,13 @@ export const SyncStatusSchema = Type.Object({
 export const SyncStatusResponse = Type.Object({
   data: SyncStatusSchema,
   meta: Meta,
+});
+
+export const SyncTriggerResponse = Type.Object({
+  data: Type.Object({
+    accepted: Type.Boolean(),
+    alreadyRunning: Type.Boolean(),
+    startedAt: Type.String(),
+  }),
+  meta: Nullable(Meta),
 });

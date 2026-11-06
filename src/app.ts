@@ -5,6 +5,7 @@ import { PortalClient } from './portal/client.js';
 import { SnapshotStore } from './store/snapshot.js';
 import { SyncScheduler } from './sync/scheduler.js';
 import { registerErrorHandler } from './lib/api-errors.js';
+import { registerDocs } from './lib/openapi.js';
 import { registerRoutes } from './routes/index.js';
 
 declare module 'fastify' {
@@ -49,6 +50,8 @@ export async function buildApp({ config, logger = false }: BuildAppOptions): Pro
   app.decorate('scheduler', scheduler);
 
   registerErrorHandler(app);
+
+  await registerDocs(app);
   await app.register(registerRoutes, { prefix: '/api/v1' });
 
   return { app, scheduler };

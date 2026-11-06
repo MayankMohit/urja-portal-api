@@ -26,7 +26,7 @@ const HealthResponse = Type.Object({
 });
 
 export async function healthRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/health', { schema: { response: { 200: HealthResponse } } }, async () => {
+  app.get('/health', { schema: { tags: ['health'], summary: 'Service and snapshot health', response: { 200: HealthResponse } } }, async () => {
     const snap = app.store.get();
     const last = app.scheduler.getLastStatus();
     const session = app.client.getSessionInfo();

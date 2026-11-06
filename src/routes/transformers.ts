@@ -40,7 +40,7 @@ export async function transformerRoutes(appRaw: FastifyInstance): Promise<void> 
 
   app.get(
     '/transformers',
-    { schema: { response: { 200: TransformersListResponse } } },
+    { schema: { tags: ['transformers'], summary: 'List all transformers', response: { 200: TransformersListResponse } } },
     async () => {
       const snapshot = requireSnapshot(app.store);
       const data = [...snapshot.transformers.values()]
@@ -52,7 +52,7 @@ export async function transformerRoutes(appRaw: FastifyInstance): Promise<void> 
 
   app.get(
     '/transformers/:code',
-    { schema: { params: TransformerParams, response: { 200: TransformerDetailResponse } } },
+    { schema: { tags: ['transformers'], summary: 'Get one transformer with its meters', params: TransformerParams, response: { 200: TransformerDetailResponse } } },
     async (request) => {
       const snapshot = requireSnapshot(app.store);
       const { code } = request.params;
